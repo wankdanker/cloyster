@@ -162,7 +162,7 @@ else if (true || cmd === 'server') {
     var server = ploy(opts);
 
     var discoverOpts = {
-        key : ['ploy', name, JSON.stringify(opts.auth)].join('-')
+        key : ['ploy', clusterName, JSON.stringify(opts.auth)].join('-')
     };
     var discover = new discover(discoverOpts);
 
