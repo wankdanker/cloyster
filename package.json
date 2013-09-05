@@ -1,6 +1,6 @@
 {
   "name": "cloyster",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Git deploy cluster based on ploy and node-discover",
   "bin": {
     "ploy": "bin/cmd.js"
