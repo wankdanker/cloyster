@@ -19,5 +19,26 @@
     "split": "~0.2.10",
     "through": "~2.3.4",
     "dank-map": "~0.1.0"
+  },
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/wankdanker/cloyster.git"
+  },
+  "keywords": [
+    "ploy",
+    "cluster",
+    "auto",
+    "git",
+    "deploy",
+    "push",
+    "discover"
+  ],
+  "bugs": {
+    "url": "https://github.com/wankdanker/cloyster/issues"
   }
 }
