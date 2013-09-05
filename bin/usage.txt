@@ -1,0 +1,58 @@
+usage:
+
+  ploy server DIRECTORY PORT
+  ploy server { -d DIRECTORY | -p PORT | -a AUTHFILE }
+
+    Create a ploy http server, hosting repositories in DIRECTORY and listening
+    on PORT for incoming connections.
+ 
+    If AUTHFILE is given, it should be a json file that maps usernames to
+    token strings to use for basic auth protection for ploy actions.
+    
+    Type `ploy help ssl` to show ssl options.
+ 
+  ploy ls { -r REMOTE | --verbose, -v | --format=FORMAT }
+ 
+    List the running process branch names at REMOTE.
+    
+    Verbose formatting will use `branch,hash,repo,port`.
+ 
+  ploy log NAME { -n ROWS | -f | -b BEGIN | -e END }
+
+    Show ROWS of log output for the branch NAME like `tail`.
+    Default -n value: screen height.
+ 
+    Stream live updates when `-f` is set like `tail -f`.
+    Slice log records for NAME directly with `-b` and `-e`.
+ 
+  ploy log { -n ROWS | -f | -b BEGIN | -e END | --color=true }
+
+    Show ROWS of log output for all branches.
+    Lines will be prefaced with a colored branch name when stdout is a tty.
+
+  ploy mv SRC DST { -r REMOTE }
+ 
+    Move the branch name SRC to the DST branch name at REMOTE.
+ 
+  ploy rm NAME { -r REMOTE }
+ 
+    Remove the branch name at NAME, killing any running processes.
+ 
+  ploy restart NAME { -r REMOTE }
+ 
+    Restart the process at NAME.
+ 
+  ploy help [TOPIC]
+ 
+    Show this message or optionally a TOPIC.
+    
+    Topics: ssl
+
+OPTIONS
+
+  For `ploy ls`, `ploy mv`, `ploy rm` commands that take a REMOTE parameter:
+  
+  REMOTE can be a git remote name or a remote URL to a ploy server. If there
+  is exactly one ploy remote in set up as a git remote, it will be used by
+  default.
+

@@ -1,0 +1,23 @@
+{
+  "name": "cloyster",
+  "version": "0.0.1",
+  "description": "Git deploy cluster based on ploy and node-discover",
+  "bin": {
+    "ploy": "bin/cmd.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Dan VerWeire",
+  "license": "MIT",
+  "dependencies": {
+    "ploy": "~1.2.3",
+    "node-discover": "0.0.9",
+    "optimist": "~0.6.0",
+    "hyperquest": "~0.1.7",
+    "defined": "0.0.0",
+    "split": "~0.2.10",
+    "through": "~2.3.4",
+    "dank-map": "~0.1.0"
+  }
+}
