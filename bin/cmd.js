@@ -150,6 +150,8 @@ else if (true || cmd === 'server') {
     var dir = path.resolve(argv.dir || argv.d || argv._.shift() || '.');
     var authFile = argv.auth || argv.a;
     var port = argv.port || argv.p || 80;
+    var clusterName = argv.name || argv.n || "";
+    
     var opts = {
         repodir: path.join(dir, 'repo'),
         workdir: path.join(dir, 'work'),
@@ -160,7 +162,7 @@ else if (true || cmd === 'server') {
     var server = ploy(opts);
 
     var discoverOpts = {
-        key : 'ploy' + JSON.stringify(opts.auth)
+        key : ['ploy', name, JSON.stringify(opts.auth)].join('-')
     };
     var discover = new discover(discoverOpts);
 
