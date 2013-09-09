@@ -18,7 +18,8 @@
     "defined": "0.0.0",
     "split": "~0.2.10",
     "through": "~2.3.4",
-    "dank-map": "~0.1.0"
+    "dank-map": "~0.1.0",
+    "text-table": "~0.1.1"
   },
   "main": "index.js",
   "directories": {

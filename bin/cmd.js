@@ -13,6 +13,8 @@ var split = require('split');
 var through = require('through');
 var discover = require('node-discover');
 var map = require('dank-map');
+var table = require('text-table');
+var url = require('url');
 
 var fs = require('fs');
 var path = require('path');
@@ -20,6 +22,7 @@ var path = require('path');
 var cmd = argv._[0];
 var advertisement = {};
 var localRepos = {};
+
 
 if (cmd === 'help' || argv.h || argv.help || process.argv.length <= 2) {
     var h = argv.h || argv.help || argv._[1];
@@ -143,9 +146,8 @@ else if (cmd === 'log' && argv._.length) {
         })).pipe(process.stdout);
     });
 }
-else if (true || cmd === 'server') {
-    // `ploy` server mode without `ploy server` is scheduled for demolition
-    if (cmd === 'server') argv._.shift();
+else if (cmd === 'server') {
+    argv._.shift();
     
     var dir = path.resolve(argv.dir || argv.d || argv._.shift() || '.');
     var authFile = argv.auth || argv.a;
@@ -160,7 +162,10 @@ else if (true || cmd === 'server') {
     };
     
     var server = ploy(opts);
-
+    
+    //over ride the server handle
+    server.handle = CloysterHandle;
+    
     var discoverOpts = {
         key : ['ploy', clusterName, JSON.stringify(opts.auth)].join('-')
     };
@@ -214,6 +219,8 @@ else if (true || cmd === 'server') {
         sopts.port = argv.sslPort || argv.s || 443;
         server.listen(sopts);
     }
+    
+    
 }
 
 function error (err) {
@@ -272,15 +279,246 @@ function showList (indent, opts) {
         if (opts.format) uri += '?format=' + opts.format
         else if (opts.verbose) uri += '?format=branch,hash,repo,port'
         
+        var buf = [];
         var hq = hyperquest(uri);
-        hq.pipe(split()).pipe(through(function (line) {
-            this.queue(Array(indent+1).join(' ') + line + '\n');
-        })).pipe(process.stdout);
+        hq.on('data', function (chunk) {
+           buf.push(chunk); 
+        });
+        hq.on('end', function () {
+           var data = JSON.parse(buf.join(''));
+           var list = [
+                ['node', 'repo', 'branch', 'key', 'port', 'hash'],
+                ['----', '----', '------', '---', '----', '----']
+            ];
+           
+           map(data, function (nodeName, branches) {
+               map(branches, function (branchName, branch) {
+                    list.push([
+                        nodeName,
+                        branch.repo,
+                        branch.branch,
+                        branch.key,
+                        branch.port,
+                        branch.hash
+                    ]);
+                });
+           });
+           
+           console.log(table(list));
+        });
         hq.on('error', function (err) {
             var msg = 'Error connecting to ' + remote + ': ' + err.message;
             console.error(msg);
         });
     });
+}
+
+function CloysterHandle (req, res) {
+    var self = this;
+    var m;
+    
+    if (RegExp('^/_ploy/[^?]+\\.git\\b').test(req.url)) {
+        req.url = req.url.replace(RegExp('^/_ploy/'), '/');
+        self.ci.handle(req, res);
+    }
+    else if (RegExp('^/_ploy/move/').test(req.url)) {
+        CloysterHandle.move.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/remove/').test(req.url)) {
+        CloysterHandle.remove.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/removeLocal/').test(req.url)) {
+        CloysterHandle.removeLocal.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/list(\\?|$)').test(req.url)) {
+        CloysterHandle.list.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/listLocal(\\?|$)').test(req.url)) {
+        CloysterHandle.listLocal.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/restart/').test(req.url)) {
+        CloysterHandle.restart.call(self, req, res);
+    }
+    else if (RegExp('^/_ploy/restartLocal/').test(req.url)) {
+        CloysterHandle.restartLocal.call(self, req, res);
+    }
+    else if (m = RegExp('^/_ploy/log(?:$|\\?)').exec(req.url)) {
+        CloysterHandle.log.call(self, req, res);
+    }
+};
+
+CloysterHandle.list = function(req, res) {
+    var self = this;
+    var params = qs.parse((url.parse(req.url).search || '').slice(1));
+    var format = String(params.format || 'branch').split(',');
+    var localNode = discover.me.address + ':' + discover.me.advertisement.ploy.port;
+    var local = {}
+
+    map(self.branches, function (branchName, obj) {
+        local[branchName] = {};
+        
+        ['port','hash','repo','branch','key'].forEach(function (col) {
+            local[branchName][col] = obj[col];
+        });
+    });
+
+    var result = {};
+    result[localNode] = local;
+
+    var waiting = 0;
+    
+    //query each known remote and add to the results
+    discover.eachNode(function (node) {
+        waiting += 1;
+        
+        var remote = node.address + ':' + node.advertisement.ploy.port;
+        
+        var buf = [];
+        var hq = hyperquest('http://' + remote + '/_ploy/listLocal');
+        
+        hq.on('data', function (chunk) {
+            buf.push(chunk);
+        });
+        hq.on('end', function () {
+            var remoteBranches = JSON.parse(buf.join(''));
+            
+            result[remote] = remoteBranches;   
+            
+            maybeFinish();
+        });
+        hq.on('error', maybeFinish);
+    });
+
+    function maybeFinish() {
+        waiting -= 1;
+
+        if (waiting === 0) {
+            res.end(JSON.stringify(result));
+        }
+    }   
+}
+
+CloysterHandle.listLocal = function (req, res) {
+    var self = this;
+    var params = qs.parse((url.parse(req.url).search || '').slice(1));
+    var format = String(params.format || 'branch').split(',');
+    
+    var result = {}
+    
+    map(self.branches, function (branchName, obj) {
+        result[branchName] = {};
+        
+        ['port','hash','repo','branch','key'].forEach(function (col) {
+            result[branchName][col] = obj[col];
+        });
+    });
+    
+    res.end(JSON.stringify(result));
+};
+
+CloysterHandle.log = function (req, res) {
+    var self = this;
+    var params = qs.parse((url.parse(req.url).search || '').slice(1));
+    var b = Number(params.begin);
+    var e = Number(params.end);
+    if (isNaN(b)) b = undefined;
+    if (isNaN(e)) e = undefined;
+    req.connection.setTimeout(0);
+    
+    var ld = self.logdir.open(params.name);
+    res.on('close', function () { ld.close() });
+    
+    if (falsey(params.follow)) {
+        var s = ld.slice(b, e);
+        s.on('error', function (err) { res.end(err + '\n') });
+        s.pipe(res);
+    }
+    else {
+        var fw = ld.follow(b, e);
+        fw.on('error', function (err) { res.end(err + '\n') });
+        fw.pipe(res);
+    } 
+}
+
+CloysterHandle.restart = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    
+    //restart our local instance
+    self.restart(name);
+    
+    var waiting = 0;
+    //restart each known remote
+    //query each known remote and add to the results
+    discover.eachNode(function (node) {
+        waiting += 1;
+
+        var remoteNode = node.address + ':' + node.advertisement.ploy.port;
+        var hq = hyperquest('http://' + remoteNode + '/_ploy/restartLocal/' + name);
+        
+        hq.on('end', maybeFinish);
+        hq.on('error', maybeFinish);
+    });
+
+    function maybeFinish() {
+        waiting -= 1;
+
+        if (waiting === 0) {
+            res.end();
+        }
+    }
+}
+
+CloysterHandle.restartLocal = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    self.restart(name);
+    res.end();   
+};
+
+CloysterHandle.remove = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    
+    //remove the local instance
+    self.remove(name);
+    
+    var waiting = 0;
+    //restart each known remote
+    //query each known remote and add to the results
+    discover.eachNode(function (node) {
+        waiting += 1;
+
+        var remoteNode = node.address + ':' + node.advertisement.ploy.port;
+        var hq = hyperquest('http://' + remoteNode + '/_ploy/removeLocal/' + name);
+        
+        hq.on('end', maybeFinish);
+        hq.on('error', maybeFinish);
+    });
+
+    function maybeFinish() {
+        waiting -= 1;
+
+        if (waiting === 0) {
+            res.end();
+        }
+    }
+    
+}
+
+CloysterHandle.removeLocal = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    self.remove(name);
+    res.end();
+}
+
+CloysterHandle.move = function (req, res) {
+    var self = this;
+    var xs = req.url.split('/').slice(3);
+    var src = xs[0], dst = xs[1];
+    self.move(src, dst);
+    res.end();   
 }
 
 function updateAvertisement(info) {
