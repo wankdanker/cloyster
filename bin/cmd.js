@@ -388,11 +388,13 @@ CloysterHandle.list = function(req, res) {
         });
         hq.on('error', maybeFinish);
     });
+    
+    maybeFinish();
 
     function maybeFinish() {
         waiting -= 1;
 
-        if (waiting === 0) {
+        if (waiting <= 0) {
             res.end(JSON.stringify(result));
         }
     }   
