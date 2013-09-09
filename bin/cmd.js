@@ -219,8 +219,6 @@ else if (cmd === 'server') {
         sopts.port = argv.sslPort || argv.s || 443;
         server.listen(sopts);
     }
-    
-    
 }
 
 function error (err) {
@@ -367,6 +365,10 @@ CloysterHandle.list = function(req, res) {
 
     var waiting = 0;
     
+    if (Object.keys(discover.nodes).length === 0) {
+        maybeFinish();
+    }
+    
     //query each known remote and add to the results
     discover.eachNode(function (node) {
         waiting += 1;
@@ -388,8 +390,6 @@ CloysterHandle.list = function(req, res) {
         });
         hq.on('error', maybeFinish);
     });
-    
-    maybeFinish();
 
     function maybeFinish() {
         waiting -= 1;
@@ -486,6 +486,11 @@ CloysterHandle.remove = function (req, res) {
     self.remove(name);
     
     var waiting = 0;
+    
+    if (Object.keys(discover.nodes).length === 0) {
+        maybeFinish();
+    }
+    
     //restart each known remote
     //query each known remote and add to the results
     discover.eachNode(function (node) {
@@ -497,11 +502,11 @@ CloysterHandle.remove = function (req, res) {
         hq.on('end', maybeFinish);
         hq.on('error', maybeFinish);
     });
-
+    
     function maybeFinish() {
         waiting -= 1;
 
-        if (waiting === 0) {
+        if (waiting <= 0) {
             res.end();
         }
     }
