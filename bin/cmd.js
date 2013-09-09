@@ -294,12 +294,12 @@ function showList (indent, opts) {
            map(data, function (nodeName, branches) {
                map(branches, function (branchName, branch) {
                     list.push([
-                        nodeName,
-                        branch.repo,
-                        branch.branch,
-                        branch.key,
-                        branch.port,
-                        branch.hash
+                        nodeName || "",
+                        branch.repo || "",
+                        branch.branch || "",
+                        branch.key || "",
+                        branch.port || "",
+                        branch.hash || ""
                     ]);
                 });
            });
