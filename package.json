@@ -11,15 +11,16 @@
   "author": "Dan VerWeire",
   "license": "MIT",
   "dependencies": {
-    "ploy": "~1.2.3",
+    "concat-stream": "^1.4.6",
+    "dank-map": "~0.1.0",
+    "defined": "0.0.0",
+    "hyperquest": "~0.1.7",
     "node-discover": "0.0.9",
     "optimist": "~0.6.0",
-    "hyperquest": "~0.1.7",
-    "defined": "0.0.0",
+    "ploy": "^1.9.0",
     "split": "~0.2.10",
-    "through": "~2.3.4",
-    "dank-map": "~0.1.0",
-    "text-table": "~0.1.1"
+    "text-table": "~0.1.1",
+    "through": "~2.3.4"
   },
   "main": "index.js",
   "directories": {
