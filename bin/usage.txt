@@ -1,26 +1,40 @@
 usage:
 
   cloyster server DIRECTORY PORT
-  cloyster server { -d DIRECTORY | -p PORT | -a AUTHFILE | -n NAME }
+  cloyster server { -d DIRECTORY | -p PORT | -a AUTHFILE | -f BOUNCER | -n CLUSTER-NAME }
 
-    Create a ploy http server, hosting repositories in DIRECTORY and listening
+    Create a cloyster http server, hosting repositories in DIRECTORY and listening
     on PORT for incoming connections.
  
     If AUTHFILE is given, it should be a json file that maps usernames to
-    token strings to use for basic auth protection for ploy actions.
+    token strings to use for basic auth protection for cloyster actions.
     
-    If NAME is given, it will be used as part of the node-discover encryption
-    key. This will allow you to to run multiple clusters without having to 
-    change the default node-discover port.
-
     Type `cloyster help ssl` to show ssl options.
- 
+    
+    You can specify a BOUNCER module with -f to use a custom http router.
+
+    If CLUSTER-NAME is given, it will be used as part of the node-discover encryption
+    key. This will allow you to to run multiple clusters without having to 
+        change the default node-discover port.
+
   cloyster ls { -r REMOTE | --verbose, -v | --format=FORMAT }
  
     List the running process branch names at REMOTE.
     
     Verbose formatting will use `branch,hash,repo,port`.
  
+  cloyster work { -r REMOTE | --format=FORMAT }
+
+    List the working directories from checked out git commits.
+    The default FORMAT is `repo,commit,time,branch`.
+ 
+    Active branches are shown with a trailing *.
+
+  cloyster clean
+
+    Remove unused working directories. These are the directories listed in
+    `cloyster work` without a *.
+
   cloyster log NAME { -n ROWS | -f | -b BEGIN | -e END }
 
     Show ROWS of log output for the branch NAME like `tail`.
@@ -46,6 +60,14 @@ usage:
  
     Restart the process at NAME.
  
+  cloyster stop NAME { -r REMOTE }
+ 
+    Stop the process at NAME.
+ 
+  cloyster redecloyster NAME { -r REMOTE }
+ 
+    Redecloyster the process at NAME, re-running install and test scripts.
+ 
   cloyster help [TOPIC]
  
     Show this message or optionally a TOPIC.
@@ -56,7 +78,7 @@ OPTIONS
 
   For `cloyster ls`, `cloyster mv`, `cloyster rm` commands that take a REMOTE parameter:
   
-  REMOTE can be a git remote name or a remote URL to a ploy server. If there
-  is exactly one ploy remote in set up as a git remote, it will be used by
+  REMOTE can be a git remote name or a remote URL to a cloyster server. If there
+  is exactly one cloyster remote in set up as a git remote, it will be used by
   default.
 

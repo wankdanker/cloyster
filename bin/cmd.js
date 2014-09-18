@@ -354,8 +354,8 @@ function showList (indent, opts) {
         hq.on('end', function () {
            var data = JSON.parse(buf.join(''));
            var list = [
-                ['node', 'repo', 'branch', 'key', 'port', 'hash'],
-                ['----', '----', '------', '---', '----', '----']
+                ['node', 'repo', 'www-host', 'branch', 'key', 'port', 'pid', 'stopped', 'hash'],
+                ['----', '----', '--------', '------', '---', '----', '---', '-------', '----']
             ];
         
            map(data, function (nodeName, branches) {
@@ -363,9 +363,12 @@ function showList (indent, opts) {
                     list.push([
                         nodeName || "",
                         branch.repo || "",
+                        branchName || "",
                         branch.branch || "",
                         branch.key || "",
-                        branch.port || "",
+                        (!branch.stopped) ? branch.port || "" : "",
+                        (!branch.stopped) ? branch.pid || "" : "", 
+                        branch.stopped,
                         branch.hash || ""
                     ]);
                 });
@@ -449,17 +452,20 @@ function CloysterHandle (req, res) {
 };
 
 CloysterHandle.list = function(req, res) {
+    //TODO: implement 'work' options 
+    //https://github.com/substack/ploy/blob/master/index.js#L485
     var self = this;
-    var params = qs.parse((url.parse(req.url).search || '').slice(1));
+    var query = (url.parse(req.url).search || '').slice(1)
+    var params = qs.parse(query);
     var format = String(params.format || 'branch').split(',');
 
     var result = {};
 
-    propogateCommand('listLocal', function (err, lists) {
+    propogateCommand('listLocal?' + query, function (err, lists) {
         lists.forEach(function (list) {
             var remote = list.node.address + ':' + list.node.advertisement.ploy.port;
 
-            result[remote] = list.response;
+            result[remote] = list.response.branches;
         });
 
         res.end(JSON.stringify(result));
@@ -470,18 +476,37 @@ CloysterHandle.listLocal = function (req, res) {
     var self = this;
     var params = qs.parse((url.parse(req.url).search || '').slice(1));
     var format = String(params.format || 'branch').split(',');
-    
-    var result = {}
-    
-    map(self.branches, function (branchName, obj) {
-        result[branchName] = {};
-        
-        ['port','hash','repo','branch','key'].forEach(function (col) {
-            result[branchName][col] = obj[col];
+
+    var result = {
+        errors : []
+        , branches : {}
+        , working : null
+    }
+
+    self.getWorking(function (err, results) {
+        if (err) {
+            res.statusCode = 500;
+            result.errors.push(err);
+
+            return res.end(JSON.stringify(result));
+        }
+
+        result.working = results;
+
+        map(self.branches, function (branchName, obj) {
+            result.branches[branchName] = {};
+            
+            ['port','hash','repo','branch','key','stopped'].forEach(function (col) {
+                result.branches[branchName][col] = obj[col] || false;
+            });
+
+            ['pid','killed','exitCode','signalCode','connected'].forEach(function (col) {
+                result.branches[branchName][col] = obj.process[col];
+            });
         });
+
+        res.end(JSON.stringify(result));
     });
-    
-    res.end(JSON.stringify(result));
 };
 
 CloysterHandle.clean = function (req, res) {
@@ -558,7 +583,10 @@ CloysterHandle.restartLocal = function (req, res) {
     var self = this;
     var name = req.url.split('/')[3];
     self.restart(name);
-    res.end();   
+
+    res.end(JSON.stringify({
+        errors : []
+    }));   
 };
 
 CloysterHandle.remove = function (req, res) {
@@ -574,7 +602,10 @@ CloysterHandle.removeLocal = function (req, res) {
     var self = this;
     var name = req.url.split('/')[3];
     self.remove(name);
-    res.end();
+
+    res.end(JSON.stringify({
+        errors : []
+    }));
 }
 
 CloysterHandle.move = function (req, res) {
@@ -592,7 +623,72 @@ CloysterHandle.moveLocal = function (req, res) {
     var xs = req.url.split('/').slice(3);
     var src = xs[0], dst = xs[1];
     self.move(src, dst);
-    res.end();   
+
+    res.end(JSON.stringify({
+        errors : []
+    }));   
+}
+
+CloysterHandle.stop = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+
+    propogateCommand('stopLocal/' + name, function (err, responses) {
+        res.end(JSON.stringify(responses));
+    });
+}
+
+CloysterHandle.stopLocal = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    self.stop(name);
+    res.end(JSON.stringify({
+        errors : []
+    }));
+}
+
+CloysterHandle.start = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+
+    propogateCommand('startLocal/' + name, function (err, responses) {
+        res.end(JSON.stringify(responses));
+    });
+}
+
+CloysterHandle.startLocal = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    self.start(name);
+    res.end(JSON.stringify({
+        errors : []
+    }));
+}
+
+CloysterHandle.redeploy = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+
+    propogateCommand('redeployLocal/' + name, function (err, responses) {
+        res.end(JSON.stringify(responses));
+    });
+}
+
+CloysterHandle.redeployLocal = function (req, res) {
+    var self = this;
+    var name = req.url.split('/')[3];
+    var errors = [];
+
+    self.redeploy(name, function (err) {
+        if (err) {
+            res.statusCode = 500;
+            errors.push(err);
+        }
+
+        res.end(JSON.stringify({
+            errors : errors
+        }));
+    });
 }
 
 function propogateCommand (command, cb) {
