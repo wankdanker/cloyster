@@ -11,8 +11,9 @@ There is work to be done but this is already usable.
 status
 ------
 
-Currently pushing to a single node and propogating to all other nodes works. Commands such as `ls`, `log`,
-`mv`, `rename`, etc do not propogate throughout the network.
+Currently pushing to a single node and propogating to all other nodes works.
+The `log` command does not currently propogate and aggregate all nodes. This
+is still to be done.
 
 install
 -------
